@@ -45,24 +45,26 @@ class PcntlProcessTest extends Command
         if ($this->option('daemon')) $this->daemon();
 
         for ($i = 0; $i < $this->workerCount; $i++) {
-            $this->processChildIds[$i] = pcntl_fork();
-            switch ($this->processChildIds[$i]) {
-                case -1 :
-                    echo "fork failed : {$i} \r\n";
-                    exit;
-                case 0 :
-                    $this->handleTask($i);
-                    exit;
-                default :
-                    break;
+            $pid = pcntl_fork();
+            if ($pid == -1) {
+                echo "fork failed : {$i} \r\n";
+                exit();
+            } elseif ($pid > 0) {
+                $this->processChildIds[] = $pid;
+            } else {
+                $this->handleTask($i);
+                exit();
             }
         }
 
         //子进程完成之后要退出
         while (count($this->processChildIds) > 0) {
-            $childPid = pcntl_waitpid(-1, $status, WNOHANG);
             foreach ($this->processChildIds as $key => $pid) {
-                if ($childPid == $pid || $childPid == -1) {
+                $res = pcntl_waitpid($pid, $status, WNOHANG);
+
+                // If the process has already exited
+                if ($res == -1 || $res > 0) {
+                    Log::debug('子进程退出', ['$pid' => $pid, 'pcntl_wifexited' => pcntl_wifexited($status), 'pcntl_wifsignaled' => pcntl_wifsignaled($status), '$res' => $res]);
                     unset($this->processChildIds[$key]);
                 }
             }
