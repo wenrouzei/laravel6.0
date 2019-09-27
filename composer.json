@@ -8,6 +8,7 @@
     ],
     "license": "MIT",
     "require": {
+        "ext-json": "*",
         "php": "^7.2",
         "fideloper/proxy": "^4.0",
         "laravel/framework": "^6.0",
@@ -31,8 +32,8 @@
         "preferred-install": "dist",
         "sort-packages": true,
         "platform": {
-            "ext-pcntl": "7.1",
-            "ext-posix": "7.1"
+            "ext-pcntl": "*",
+            "ext-posix": "*"
         }
     },
     "extra": {
