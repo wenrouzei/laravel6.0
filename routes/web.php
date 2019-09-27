@@ -18,3 +18,17 @@ Route::get('/', function () {
 Auth::routes();
 
 Route::get('/home', 'HomeController@index')->name('home');
+
+
+Route::get('/permission', function () {
+//    $role = \Spatie\Permission\Models\Role::create(['name' => 'writer']);
+//    $permission = \Spatie\Permission\Models\Permission::create(['name' => 'edit articles']);
+
+    $role = Spatie\Permission\Models\Role::first();
+    $permission = \Spatie\Permission\Models\Permission::first();
+    $role->givePermissionTo($permission);
+    $user = \App\User::first();
+    $user->assignRole($role);
+    $user->givePermissionTo($permission);
+    dump($user->getDirectPermissions(),$user->getAllPermissions());
+})->middleware('permission:edit articles');
