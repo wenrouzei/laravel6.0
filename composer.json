@@ -11,6 +11,7 @@
         "php": "^7.2",
         "fideloper/proxy": "^4.0",
         "laravel/framework": "^6.0",
+        "laravel/horizon": "^3.3",
         "laravel/tinker": "^1.0",
         "spatie/laravel-permission": "^3.0"
     },
@@ -28,7 +29,11 @@
     "config": {
         "optimize-autoloader": true,
         "preferred-install": "dist",
-        "sort-packages": true
+        "sort-packages": true,
+        "platform": {
+            "ext-pcntl": "7.1",
+            "ext-posix": "7.1"
+        }
     },
     "extra": {
         "laravel": {
