@@ -30,5 +30,8 @@ Route::get('/permission', function () {
     $user = \App\User::first();
     $user->assignRole($role);
     $user->givePermissionTo($permission);
-    dump($user->getDirectPermissions(),$user->getAllPermissions());
+    dump($user->getDirectPermissions(), $user->getAllPermissions());
 })->middleware('permission:edit articles');
+
+
+Route::view('ws', 'ws');

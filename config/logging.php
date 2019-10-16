@@ -89,6 +89,13 @@ return [
             'driver' => 'errorlog',
             'level' => 'debug',
         ],
+
+        'workerman' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/workerman.log'),
+            'level' => 'debug',
+            'days' => 1,
+        ],
     ],
 
 ];
