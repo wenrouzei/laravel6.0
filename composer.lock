@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "978a5a7e9a8a48496898a80d98b253a7",
+    "content-hash": "f037fe36f8f11c645e27abdce707f151",
     "packages": [
         {
             "name": "cakephp/chronos",
@@ -3440,6 +3440,98 @@
                 "environment"
             ],
             "time": "2019-08-27T17:00:38+00:00"
+        },
+        {
+            "name": "workerman/gateway-worker",
+            "version": "v3.0.13",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/walkor/GatewayWorker.git",
+                "reference": "38b44c95f21cd340b5a9cff3987ddb2abb9a2a38"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/walkor/GatewayWorker/zipball/38b44c95f21cd340b5a9cff3987ddb2abb9a2a38",
+                "reference": "38b44c95f21cd340b5a9cff3987ddb2abb9a2a38",
+                "shasum": "",
+                "mirrors": [
+                    {
+                        "url": "https://mirrors.aliyun.com/composer/dists/%package%/%reference%.%type%",
+                        "preferred": true
+                    }
+                ]
+            },
+            "require": {
+                "workerman/workerman": ">=3.1.8"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "GatewayWorker\\": "./src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "homepage": "http://www.workerman.net",
+            "keywords": [
+                "communication",
+                "distributed"
+            ],
+            "time": "2019-07-02T11:55:24+00:00"
+        },
+        {
+            "name": "workerman/workerman",
+            "version": "v3.5.22",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/walkor/Workerman.git",
+                "reference": "488f108f9e446f31bac4d689bb9f9fe3705862cf"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/walkor/Workerman/zipball/488f108f9e446f31bac4d689bb9f9fe3705862cf",
+                "reference": "488f108f9e446f31bac4d689bb9f9fe3705862cf",
+                "shasum": "",
+                "mirrors": [
+                    {
+                        "url": "https://mirrors.aliyun.com/composer/dists/%package%/%reference%.%type%",
+                        "preferred": true
+                    }
+                ]
+            },
+            "require": {
+                "php": ">=5.3"
+            },
+            "suggest": {
+                "ext-event": "For better performance. "
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Workerman\\": "./"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "walkor",
+                    "email": "walkor@workerman.net",
+                    "homepage": "http://www.workerman.net",
+                    "role": "Developer"
+                }
+            ],
+            "description": "An asynchronous event driven PHP framework for easily building fast, scalable network applications.",
+            "homepage": "http://www.workerman.net",
+            "keywords": [
+                "asynchronous",
+                "event-loop"
+            ],
+            "time": "2019-09-06T03:42:47+00:00"
         }
     ],
     "packages-dev": [
@@ -6927,11 +7019,12 @@
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
-        "php": "^7.2"
+        "php": "^7.2",
+        "ext-json": "*"
     },
     "platform-dev": [],
     "platform-overrides": {
-        "ext-pcntl": "7.1",
-        "ext-posix": "7.1"
+        "ext-pcntl": "7.2",
+        "ext-posix": "7.2"
     }
 }
