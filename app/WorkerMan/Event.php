@@ -9,12 +9,9 @@
 namespace App\WorkerMan;
 
 
-use App\User;
+use App\Jobs\ChatMessage;
 use GatewayWorker\BusinessWorker;
-use GatewayWorker\Lib\Gateway;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
-use Workerman\Lib\Timer;
 
 class Event
 {
@@ -38,7 +35,22 @@ class Event
 
     public static function onMessage($clientId, $message)
     {
-        Log::channel('workerman')->info($clientId . ' message：' . $message);
+        try {
+            $data = json_decode($message, true);
+            if ($data && isset($data['type']) && $data['type'] == 'chat') {
+                dispatch((new ChatMessage([
+                    'message' => $data['content'] ?? '',
+                    'where' => $data['where'] ?? '',
+                    'client_id' => $clientId
+                ]))->onQueue('default'));
+            }
+        } catch (\Throwable $throwable) {
+            try {
+                Log::channel('workerman')->info($clientId . ' message：' . $message, ['$throwable' => $throwable]);
+            } catch (\Throwable $throwable) {
+
+            }
+        }
     }
 
     public static function onClose($clientId)

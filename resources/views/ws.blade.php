@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <title>Laravel</title>
+    <title>websocket</title>
 
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css?family=Nunito:200,600" rel="stylesheet">
@@ -79,6 +79,7 @@
 <script>
     let ws = new WebSocket('ws://192.168.10.10:2346');
     let intervalId;
+    let chatIntervalId;
     ws.addEventListener('open', function (event) {
         console.log('已连接！');
         intervalId = setInterval(function () {
@@ -95,12 +96,18 @@
             document.getElementById('time').innerHTML = (y + "年" + m + "月" + d + "日" + "   " + h + ":" + i + ":" + s + " " + "星期" + "日一二三四五六".charAt(weekDay));
             ws.send('{"type":"pong"}');
         }, 10000);
+        chatIntervalId = setInterval(function () {
+            console.log(intervalId + ' chat');
+            ws.send('{"type":"chat","content":"测试内容","where":1}');
+        }, 2000);
     });
     ws.addEventListener('message', onMessage)
     ws.addEventListener('close', event => {
         console.log("连接关闭，定时重连");
         clearInterval(intervalId);
+        clearInterval(chatIntervalId);
         console.log('关闭定时器:' + intervalId);
+        console.log('关闭聊天定时器:' + chatIntervalId);
     });
     ws.addEventListener('error', function (event) {
         console.log("出现错误");

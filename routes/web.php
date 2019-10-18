@@ -34,4 +34,8 @@ Route::get('/permission', function () {
 })->middleware('permission:edit articles');
 
 
-Route::view('ws', 'ws');
+Route::view('/ws', 'ws');
+
+Route::get('/redis', function () {
+    dump(new Redis());
+});
