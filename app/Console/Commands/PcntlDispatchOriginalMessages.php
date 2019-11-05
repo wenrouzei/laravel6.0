@@ -80,14 +80,6 @@ class PcntlDispatchOriginalMessages extends Command
     public function __construct()
     {
         parent::__construct();
-        //启动分发redis队列中的原始数据到laravel的队列任务中处理队列
-        $queues = config('database.redis');
-        foreach ($queues as $key => $queue) {
-            if (Str::startsWith($key, 'queue_')) {
-                $this->connections[] = $key;
-            }
-        }
-        if ($this->connections) $this->connectionsLength = count($this->connections);
     }
 
     /**
@@ -97,7 +89,28 @@ class PcntlDispatchOriginalMessages extends Command
      */
     public function handle()
     {
+        $this->queueInitialize();
         $this->parseCommand();
+    }
+
+    /**
+     * 初始化队列
+     */
+    protected function queueInitialize()
+    {
+        //启动分发redis队列中的原始数据到laravel的队列任务中处理队列
+        $queues = config('database.redis');
+        foreach ($queues as $key => $queue) {
+            if (Str::startsWith($key, 'queue_')) {
+                $this->connections[] = $key;
+            }
+        }
+        if ($this->connections) $this->connectionsLength = count($this->connections);
+        if (!$this->connectionsLength) {
+            Log::debug('没有配置需要分发的队列，自动退出');
+            $this->line('没有配置需要分发的队列，自动退出');
+            exit();
+        }
     }
 
     /**
@@ -106,7 +119,7 @@ class PcntlDispatchOriginalMessages extends Command
     protected function parseCommand()
     {
         try {
-            $this->init();
+            $this->environmentInitialize();
             $action = $this->argument('action');
             switch ($action) {
                 case 'start':
@@ -153,9 +166,9 @@ class PcntlDispatchOriginalMessages extends Command
     }
 
     /**
-     * 初始化
+     * 环境初始化
      */
-    protected function init()
+    protected function environmentInitialize()
     {
         if (strpos(strtolower(PHP_OS), 'win') === 0) {
             exit("not support windows.\n");
@@ -248,10 +261,11 @@ class PcntlDispatchOriginalMessages extends Command
         } elseif ($pid > 0) {
             $this->processChildIds[] = $pid;
         } else {
-            Log::debug('子进程启动', ['master_pid' => $this->masterPid, 'child_pid' => posix_getpid()]);
+            $connection = bcmod(posix_getpid(), $this->connectionsLength);
+            Log::debug('子进程启动', ['master_pid' => $this->masterPid, 'child_pid' => posix_getpid(), '$connection' => $connection, 'queue' => $this->connections[$connection]]);
             while (true) {
                 $this->handleStop();
-                $this->handleTask();
+                $this->handleTask($connection);
             }
             exit();
         }
@@ -298,10 +312,10 @@ class PcntlDispatchOriginalMessages extends Command
     }
 
     /**
-     * 信号处理器
+     * 信号处理器 TODO 必须设置为public
      * @param $signal
      */
-    protected function signalHandler($signal)
+    public function signalHandler($signal)
     {
         Log::debug('receive signal: ' . $signal, ['pid' => posix_getpid()]);
         switch ($signal) {
@@ -343,22 +357,17 @@ class PcntlDispatchOriginalMessages extends Command
 
     /**
      * 任务处理
+     * @param $connection
      */
-    protected function handleTask()
+    protected function handleTask($connection)
     {
         try {
-            if ($this->connectionsLength) {
-                $connection = bcmod(posix_getpid(), $this->connectionsLength);
-                if ($message = Redis::connection($this->connections[$connection])->rPop('public_opinion_analysis::origin')) {
-                    $data = json_decode($message, true);
-                    if ($data) dispatch((new OriginalMessageJob($data))->onQueue('opinion-analysis:origin-message'));
-//                    Log::debug('task finish', ['$connection' => $this->connections[$connection], 'pid' => posix_getpid(), 'memory_get_usage()' => round(memory_get_usage() / 1024 / 1024, 2), 'memory_get_peak_usage' => round(memory_get_peak_usage() / 1024 / 1024, 2)]);
-                } else {
-                    usleep(300000);
-                }
+            if ($message = Redis::connection($this->connections[$connection])->rPop('public_opinion_analysis::origin')) {
+                $data = json_decode($message, true);
+                if ($data) dispatch((new OriginalMessageJob($data))->onQueue('opinion-analysis:origin-message'));
+//                Log::debug('task finish', ['$connection' => $connection, 'queue' => $this->connections[$connection], 'pid' => posix_getpid(), 'memory_get_usage()' => round(memory_get_usage() / 1024 / 1024, 2), 'memory_get_peak_usage' => round(memory_get_peak_usage() / 1024 / 1024, 2)]);
             } else {
-                Log::debug('Don\'t have connections; Task exit.', ['pid' => posix_getpid(), 'memory_get_usage()' => round(memory_get_usage() / 1024 / 1024, 2), 'memory_get_peak_usage' => round(memory_get_peak_usage() / 1024 / 1024, 2)]);
-                exit();
+                usleep(300000);
             }
         } catch (\Throwable $throwable) {
             Log::error('task error', ['pid' => posix_getpid(), 'memory_get_usage()' => round(memory_get_usage() / 1024 / 1024, 2), 'memory_get_peak_usage' => round(memory_get_peak_usage() / 1024 / 1024, 2)]);
