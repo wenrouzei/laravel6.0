@@ -215,17 +215,24 @@ class PcntlDispatchOriginalMessages extends Command
     {
         //子进程完成之后要退出
         while (count($this->processChildIds) > 0) {
-            foreach ($this->processChildIds as $key => $pid) {
-                $res = pcntl_waitpid($pid, $status, WNOHANG);
-                // If the process has already exited
-                if ($res == -1 || $res > 0) {
-                    Log::debug('子进程退出', ['$pid' => $pid, 'pcntl_wifexited' => pcntl_wifexited($status), 'pcntl_wifsignaled' => pcntl_wifsignaled($status), '$res' => $res]);
-                    unset($this->processChildIds[$key]);
-                }
+            while (($pid = pcntl_waitpid(0, $status)) != -1) {
+                Log::debug('子进程退出', ['child_pid' => $pid, 'pcntl_wifexited' => pcntl_wifexited($status), 'pcntl_wifsignaled' => pcntl_wifsignaled($status)]);
+                $this->processChildIds = array_diff($this->processChildIds, [$pid]);
             }
+
+//            //TODO 使用WNOHANG导致退出阻塞而进行轮训系统资源（CPU）占用过高，不建议使用
+//            foreach ($this->processChildIds as $key => $pid) {
+//                $res = pcntl_waitpid($pid, $status, WNOHANG);
+//                // If the process has already exited
+//                if ($res == -1 || $res > 0) {
+//                    Log::debug('子进程退出', ['child_pid' => $pid, 'pcntl_wifexited' => pcntl_wifexited($status), 'pcntl_wifsignaled' => pcntl_wifsignaled($status), '$res' => $res]);
+//                    unset($this->processChildIds[$key]);
+//                }
+//            }
+
             if ($this->status != self::STATUS_SHUTDOWN) $this->forkWorkers();
         }
-        Log::debug('主进程退出', ['$masterPid' => $this->masterPid, 'pid' => posix_getpid()]);
+        Log::debug('主进程退出', ['master_pid' => $this->masterPid, 'pid' => posix_getpid()]);
         @unlink($this->pidFile);
     }
 
@@ -241,6 +248,7 @@ class PcntlDispatchOriginalMessages extends Command
         } elseif ($pid > 0) {
             $this->processChildIds[] = $pid;
         } else {
+            Log::debug('子进程启动', ['master_pid' => $this->masterPid, 'child_pid' => posix_getpid()]);
             while (true) {
                 $this->handleStop();
                 $this->handleTask();
@@ -265,6 +273,7 @@ class PcntlDispatchOriginalMessages extends Command
             $this->error($this->signature . " 保存主进程id失败!");
             exit;
         }
+        Log::debug('主进程启动', ['master_pid' => $this->masterPid, 'pid' => posix_getpid()]);
     }
 
     //获取pid
@@ -286,12 +295,6 @@ class PcntlDispatchOriginalMessages extends Command
         pcntl_signal(SIGUSR1, array($this, 'signalHandler'), false);
         // graceful reload
         pcntl_signal(SIGQUIT, array($this, 'signalHandler'), false);
-        // status
-        pcntl_signal(SIGUSR2, array($this, 'signalHandler'), false);
-        // connection status
-        pcntl_signal(SIGIO, array($this, 'signalHandler'), false);
-        // ignore
-        pcntl_signal(SIGPIPE, SIG_IGN, false);
     }
 
     /**
@@ -309,6 +312,7 @@ class PcntlDispatchOriginalMessages extends Command
                 if ($this->masterPid === posix_getpid()) {
                     Log::debug('master receive signal(' . $signal . ') for close', ['master_pid' => posix_getpid()]);
                     foreach ($this->processChildIds as $pid) {
+                        Log::debug('master send signal(' . $signal . ') to child for close', ['child_pid' => $pid]);
                         posix_kill($pid, SIGINT);
                     }
                     $this->status = self::STATUS_SHUTDOWN;
@@ -324,6 +328,7 @@ class PcntlDispatchOriginalMessages extends Command
                 if ($this->masterPid === posix_getpid()) {
                     Log::debug('master receive signal(' . $signal . ') for reload', ['master_pid' => posix_getpid()]);
                     foreach ($this->processChildIds as $pid) {
+                        Log::debug('master send signal(' . $signal . ') to child for reload', ['child_pid' => $pid]);
                         posix_kill($pid, SIGQUIT);
                     }
                     $this->status = self::STATUS_RELOADING;
@@ -347,7 +352,7 @@ class PcntlDispatchOriginalMessages extends Command
                 if ($message = Redis::connection($this->connections[$connection])->rPop('public_opinion_analysis::origin')) {
                     $data = json_decode($message, true);
                     if ($data) dispatch((new OriginalMessageJob($data))->onQueue('opinion-analysis:origin-message'));
-                    Log::debug('task finish', ['$connection' => $this->connections[$connection], 'pid' => posix_getpid(), 'memory_get_usage()' => round(memory_get_usage() / 1024 / 1024, 2), 'memory_get_peak_usage' => round(memory_get_peak_usage() / 1024 / 1024, 2)]);
+//                    Log::debug('task finish', ['$connection' => $this->connections[$connection], 'pid' => posix_getpid(), 'memory_get_usage()' => round(memory_get_usage() / 1024 / 1024, 2), 'memory_get_peak_usage' => round(memory_get_peak_usage() / 1024 / 1024, 2)]);
                 } else {
                     usleep(300000);
                 }
@@ -358,7 +363,7 @@ class PcntlDispatchOriginalMessages extends Command
         } catch (\Throwable $throwable) {
             Log::error('task error', ['pid' => posix_getpid(), 'memory_get_usage()' => round(memory_get_usage() / 1024 / 1024, 2), 'memory_get_peak_usage' => round(memory_get_peak_usage() / 1024 / 1024, 2)]);
         }
-        if (($memory = round(memory_get_usage() / 1024 / 1024, 2)) >= $this->memoryLimit) {
+        if (round(memory_get_usage() / 1024 / 1024, 2) >= $this->memoryLimit) {
             Log::error('超出限制内存(' . $this->memoryLimit . ')任务子进程退出', ['pid' => posix_getpid(), 'memory_get_usage()' => round(memory_get_usage() / 1024 / 1024, 2), 'memory_get_peak_usage' => round(memory_get_peak_usage() / 1024 / 1024, 2)]);
             exit();
         }
